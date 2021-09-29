@@ -1,24 +1,29 @@
-@Library('javahome-libs') _
 pipeline{
     agent any
-    tools{
-        maven 'maven3'
-    }
     stages{
-        stage("Create Folder"){
+        stage("git checkout"){
             steps{
-                sh "mkdir -p ${env.JOB_NAME}"
+                git url:"https://github.com/arpith-madhusudan/java.git",branch:"master"
             }
         }
-        stage("Maven Build"){
+        stage("buid"){
             steps{
-                sh 'mvn clean package'
+                sh "/usr/share/apache-maven/bin/mvn clean package"
+                sh "mv target/*.war target/myweb.war"
             }
         }
-        stage("Deploy to Tomcat Dev"){
+        stage("deploy"){
             steps{
-                tomcatDeploy('tomcat-dev','ec2-user','172.31.40.104')
+                sshagent(['tomcat']) {
+                    sh """
+                        scp -o StrictHostKeyChecking=no target/myweb.war ec2-user@172.31.95.66:/opt/tomcat8/webapps/
+                        ssh ec2-user@172.31.95.66 /opt/tomcat8/shutdown.sh
+                        ssh ec2-user@172.31.95.66 /opt/tomcat8/startup.sh
+                      """
+    
+                }
             }
         }
     }
+
 }
